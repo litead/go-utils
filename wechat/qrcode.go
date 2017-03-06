@@ -48,8 +48,8 @@ func (c *Client) CreateQRCodeStr(sceneId string) (QRcode, error) {
 		} `json:"action_info"`
 	}
 
-	request.ActionName = "QR_LIMIT_STR_SCENE"
-	request.ActionInfo.Scene.SceneStr = sceneId
+	req.ActionName = "QR_LIMIT_STR_SCENE"
+	req.ActionInfo.Scene.SceneStr = sceneId
 
 	var qrcode QRcode
 	e := c.post(urlCreateQRCode, &req, &qrcode)

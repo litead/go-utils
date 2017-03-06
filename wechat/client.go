@@ -20,8 +20,8 @@ type Client struct {
 }
 
 func (c *Client) post(url string, req, resp interface{}) error {
-	api = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken())
-	return c.doPost(api, req, resp)
+	url = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken(), -1)
+	return c.doPost(url, req, resp)
 }
 
 func (c *Client) doPost(url string, req, resp interface{}) error {
@@ -39,7 +39,7 @@ func (c *Client) doPost(url string, req, resp interface{}) error {
 }
 
 func (c *Client) get(url string, resp interface{}) error {
-	api = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken())
+	url = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken(), -1)
 	return c.doGet(url, resp)
 }
 
@@ -92,13 +92,15 @@ func (c *Client) updateAccessToken() error {
 
 	c.accessToken = r.Token
 	c.expireTime = time.Now().Add(time.Duration(r.ExpiresIn) * time.Second)
+
+	return nil
 }
 
 func (c *Client) UpdateAccessToken(force bool) (string, error) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
-	if (!force) && time.Now().Before(c.ExpireTime) {
+	if (!force) && time.Now().Before(c.expireTime) {
 		return c.accessToken, nil
 	}
 
