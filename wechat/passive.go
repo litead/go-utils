@@ -1,11 +1,22 @@
 package wechat
 
+import (
+	"time"
+)
+
 type PassiveMessageBase struct {
 	XMLName      struct{} `xml:"xml"`
 	ToUserName   string   `xml:"ToUserName"`
 	FromUserName string   `xml:"FromUserName"`
 	CreateTime   uint32   `xml:"CreateTime"`
 	MsgType      string   `xml:"MsgType"`
+}
+
+func (m *PassiveMessageBase) init(from, to, msgType string) {
+	m.FromUserName = from
+	m.ToUserName = to
+	m.MsgType = msgType
+	m.CreateTime = uint32(time.Now().Unix())
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -88,11 +99,23 @@ type PassiveTextReply struct {
 	Content string `xml:"Content"`
 }
 
+func NewPassiveTextReply(from, to string) *PassiveTextReply {
+	r := &PassiveTextReply{}
+	r.init(from, to, "text")
+	return r
+}
+
 type PassiveImageReply struct {
 	PassiveMessageBase
 	Image struct {
 		MediaID string `xml:"MediaId"`
 	} `xml:"Image"`
+}
+
+func NewPassiveImageReply(from, to string) *PassiveImageReply {
+	r := &PassiveImageReply{}
+	r.init(from, to, "image")
+	return r
 }
 
 type PassiveVoiceReply struct {
@@ -102,6 +125,12 @@ type PassiveVoiceReply struct {
 	} `xml:"Voice"`
 }
 
+func NewPassiveVoiceReply(from, to string) *PassiveVoiceReply {
+	r := &PassiveVoiceReply{}
+	r.init(from, to, "voice")
+	return r
+}
+
 type PassiveVideoReply struct {
 	PassiveMessageBase
 	Video struct {
@@ -109,6 +138,12 @@ type PassiveVideoReply struct {
 		Title       string `xml:"Title"`
 		Description string `xml:"Description"`
 	} `xml:"Video"`
+}
+
+func NewPassiveVideoReply(from, to string) *PassiveVideoReply {
+	r := &PassiveVideoReply{}
+	r.init(from, to, "video")
+	return r
 }
 
 type PassiveMusicReply struct {
@@ -122,13 +157,20 @@ type PassiveMusicReply struct {
 	} `xml:"Music"`
 }
 
+func NewPassiveMusicReply(from, to string) *PassiveMusicReply {
+	r := &PassiveMusicReply{}
+	r.init(from, to, "music")
+	return r
+}
+
 type PassiveNewsReply struct {
 	PassiveMessageBase
-	ArticleCount uint32 `xml:"ArticleCount"`
-	Articles     []struct {
-		Title       string `xml:"Title"`
-		Description string `xml:"Description"`
-		ImageURL    string `xml:"PicUrl"`
-		URL         string `xml:"Url"`
-	} `xml:"Articles>item"`
+	ArticleCount uint32    `xml:"ArticleCount"`
+	Articles     []Article `xml:"Articles>item"`
+}
+
+func NewPassiveNewsReply(from, to string) *PassiveNewsReply {
+	r := &PassiveNewsReply{}
+	r.init(from, to, "news")
+	return r
 }

@@ -21,6 +21,13 @@ func (e Error) Error() string {
 	return fmt.Sprintf("[wechat] code: %d, message: %s", e.Code, e.Message)
 }
 
+type Article struct {
+	Title       string `xml:"Title" json:"title"`
+	Description string `xml:"Description" json:"description"`
+	ImageURL    string `xml:"PicUrl" json:"picurl"`
+	URL         string `xml:"Url" json:"url"`
+}
+
 func VerifySignature(token, timestamp, nonce, signature string) bool {
 	strs := []string{token, timestamp, nonce}
 	sort.Strings(strs)
