@@ -3,6 +3,8 @@ package wechat
 import (
 	"bytes"
 	"crypto/sha1"
+	"crypto/subtle"
+	"encoding/hex"
 	"encoding/xml"
 	"fmt"
 	"regexp"
@@ -19,11 +21,14 @@ func (e Error) Error() string {
 	return fmt.Sprintf("[wechat] code: %d, message: %s", e.Code, e.Message)
 }
 
-func CalculateSignature(token, timestamp, nonce string) []byte {
+func VerifySignature(token, timestamp, nonce, signature string) bool {
 	strs := []string{token, timestamp, nonce}
 	sort.Strings(strs)
-	sig := sha1.Sum([]byte(strings.Join(strs, "")))
-	return sig[:]
+	sig1 := sha1.Sum([]byte(strings.Join(strs, "")))
+	if sig2, e := hex.DecodeString(signature); e == nil {
+		return subtle.ConstantTimeCompare(sig1[:], sig2) == 1
+	}
+	return false
 }
 
 var (
