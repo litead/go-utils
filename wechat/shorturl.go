@@ -1,7 +1,7 @@
 package wechat
 
 func (c *Client) CreateShortUrl(longUrl string) (string, error) {
-	const url = "https://api.weixin.qq.com/cgi-bin/shorturl?access_token={ACCESS_TOKEN}"
+	const url = "https://api.weixin.qq.com/cgi-bin/shorturl?access_token=ACCESS_TOKEN"
 
 	var req struct {
 		Action  string `json:"action"`

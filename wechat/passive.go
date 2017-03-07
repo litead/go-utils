@@ -69,13 +69,13 @@ type PassiveLinkMessage struct {
 ///////////////////////////////////////////////////////////////////////////////
 // Events
 
-type Event struct {
+type EventBase struct {
 	PassiveMessageBase
 	Event string `xml:"Event"`
 }
 
 type SubscribeEvent struct {
-	Event
+	EventBase
 	EventKey string `xml:"EventKey"`
 	Ticket   string `xml:"Ticket"`
 }
@@ -83,13 +83,18 @@ type SubscribeEvent struct {
 type ScanEvent SubscribeEvent
 
 type LocationEvent struct {
-	Event
+	EventBase
 	Latitude  float64 `xml:"Latitude"`
 	Longitude float64 `xml:"Longitude"`
 	Precision float64 `xml:"Precision"`
 }
 
 type ClickEvent SubscribeEvent
+
+type ViewEvent struct {
+	SubscribeEvent
+	MenuID string `xml:"MenuID"`
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // Replies

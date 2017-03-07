@@ -71,7 +71,7 @@ func ParsePassiveMessage(data []byte) interface{} {
 			return nil
 		}
 		switch string(bytes.ToLower(matches[2])) {
-		case "subscribe":
+		case "subscribe", "unsubscribe":
 			msg = &SubscribeEvent{}
 		case "scan":
 			msg = &ScanEvent{}
@@ -79,6 +79,8 @@ func ParsePassiveMessage(data []byte) interface{} {
 			msg = &LocationEvent{}
 		case "click":
 			msg = &ClickEvent{}
+		case "view":
+			msg = &ViewEvent{}
 		}
 	}
 

@@ -6,7 +6,7 @@ type QRcode struct {
 	URL           string `json:"url"`
 }
 
-const urlCreateQRCode = "https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token={ACCESS_TOKEN}"
+const urlCreateQRCode = "https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=ACCESS_TOKEN"
 
 // CreateQRCode creates a QR code with the specified scene id.
 // if expireSeconds is zero, create a permanent QR code,

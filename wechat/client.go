@@ -20,14 +20,19 @@ type Client struct {
 }
 
 func (c *Client) post(url string, req, resp interface{}) error {
-	url = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken(), -1)
+	url = strings.Replace(url, "ACCESS_TOKEN", c.AccessToken(), -1)
 	return c.doPost(url, req, resp)
 }
 
 func (c *Client) doPost(url string, req, resp interface{}) error {
-	data, e := json.Marshal(req)
-	if e != nil {
+	var data []byte
+
+	if s, ok := req.(string); ok {
+		data = []byte(s)
+	} else if d, e := json.Marshal(req); e != nil {
 		return e
+	} else {
+		data = d
 	}
 
 	hresp, e := http.DefaultClient.Post(url, "application/json", bytes.NewReader(data))
@@ -39,7 +44,7 @@ func (c *Client) doPost(url string, req, resp interface{}) error {
 }
 
 func (c *Client) get(url string, resp interface{}) error {
-	url = strings.Replace(url, "{ACCESS_TOKEN}", c.AccessToken(), -1)
+	url = strings.Replace(url, "ACCESS_TOKEN", c.AccessToken(), -1)
 	return c.doGet(url, resp)
 }
 
@@ -69,6 +74,10 @@ func parseResponse(resp *http.Response, v interface{}) error {
 		return nil
 	}
 
+	if s, ok := v.(*string); ok {
+		*s = string(data)
+		return nil
+	}
 	return json.Unmarshal(data, v)
 }
 
