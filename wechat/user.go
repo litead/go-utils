@@ -50,17 +50,20 @@ func (c *Client) RefreshOAuth2AccessToken(refreshToken string) (*OAuth2AccessTok
 	return token, nil
 }
 
-func (c *Client) GetUserInfo_OAuth2(code string) (*UserInfo, error) {
+func (c *Client) GetUserInfoByOAuth2AccessToken(accessToken, openID string) (*UserInfo, error) {
 	const urlFmt = "https://api.weixin.qq.com/sns/userinfo?access_token=%s&openid=%s&lang=zh_CN"
-	token, e := c.GetOAuth2AccessToken(code)
-	if e != nil {
-		return nil, e
-	}
-
-	url := fmt.Sprintf(urlFmt, token.AccessToken, token.OpenID)
+	url := fmt.Sprintf(urlFmt, accessToken, openID)
 	ui := &UserInfo{}
 	if e := c.doGet(url, ui); e != nil {
 		return nil, e
 	}
 	return ui, nil
+}
+
+func (c *Client) GetUserInfoViaOAuth2(code string) (*UserInfo, error) {
+	t, e := c.GetOAuth2AccessToken(code)
+	if e != nil {
+		return nil, e
+	}
+	return c.GetUserInfoByOAuth2AccessToken(t.AccessToken, t.OpenID)
 }
