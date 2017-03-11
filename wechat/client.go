@@ -144,8 +144,6 @@ func (c *Client) AccessToken() string {
 	return c.accessToken
 }
 
-func NewClient(appID, secret string) (*Client, error) {
-	c := &Client{AppID: appID, Secret: secret}
-	_, e := c.UpdateAccessToken(true)
-	return c, e
+func NewClient(appID, secret string) *Client {
+	return &Client{AppID: appID, Secret: secret, expireTime: time.Now()}
 }
