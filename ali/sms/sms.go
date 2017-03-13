@@ -6,7 +6,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -49,17 +48,14 @@ func (s *sender) Send(mobile, signName, template, param string) error {
 	}
 
 	buf := new(bytes.Buffer)
-	and := ""
 	for _, p := range params {
-		buf.WriteString(and)
 		buf.WriteString(url.QueryEscape(p.key))
 		buf.WriteByte('=')
 		buf.WriteString(url.QueryEscape(p.value))
-		and = "&"
+		buf.WriteByte('&')
 	}
 
-	sign := getSignature(buf.String(), s.appSecret)
-
+	sign := getSignature(buf.Bytes()[:buf.Len()-1], s.appSecret)
 	buf.Reset()
 	buf.WriteString("Signature=")
 	buf.WriteString(sign)
@@ -82,28 +78,29 @@ func doPost(body *bytes.Buffer) error {
 		return e
 	}
 
-	m := make(map[string]interface{})
-	if e := json.NewDecoder(resp.Body).Decode(&m); e != nil {
+	var result struct {
+		Model     string `json:"Model"`
+		Message   string `json:"Message"`
+		RequestID string `json:"RequestId"`
+		HostID    string `json:"HostId"`
+		Code      string `json:"Code"`
+	}
+	if e := json.NewDecoder(resp.Body).Decode(&result); e != nil {
 		return e
 	}
 
-	if _, ok := m["alibaba_aliqin_fc_sms_num_send_response"]; ok {
-		return nil
+	if len(result.Code) != 0 {
+		return fmt.Errorf("code: %s, message: %s", result.Code, result.Message)
 	}
 
-	if m, ok := m["error_response"].(map[string]interface{}); ok {
-		if s, ok := m["sub_msg"].(string); ok {
-			return errors.New(s)
-		}
-	}
-
-	return errors.New("发短信时发生未知错误")
+	return nil
 }
 
-func getSignature(str, secret string) string {
-	data := []byte("POST&%2F&" + url.QueryEscape(str))
+func getSignature(data []byte, secret string) string {
 	mac := hmac.New(sha1.New, []byte(secret+"&"))
-	mac.Write(data)
+	mac.Write([]byte("POST&%2F&"))
+	str := url.QueryEscape(string(data))
+	mac.Write([]byte(str))
 	sig := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 	return url.QueryEscape(sig)
 }
