@@ -19,21 +19,21 @@ type pair struct {
 }
 
 type sender struct {
-	appKey    string
-	appSecret string
+	accessKeyId     string
+	accessKeySecret string
 }
 
 var (
 	gNonce uint64
 )
 
-func NewSmsSender(appKey, appSecret string) *sender {
-	return &sender{appKey: appKey, appSecret: appSecret}
+func NewSender(accessKeyId, accessKeySecret string) *sender {
+	return &sender{accessKeyId: accessKeyId, accessKeySecret: accessKeySecret}
 }
 
 func (s *sender) Send(mobile, signName, template, param string) error {
 	params := []pair{
-		{key: "AccessKeyId", value: s.appKey},
+		{key: "AccessKeyId", value: s.accessKeyId},
 		{key: "Action", value: "SingleSendSms"},
 		{key: "Format", value: "JSON"},
 		{key: "ParamString", value: param},
@@ -55,7 +55,7 @@ func (s *sender) Send(mobile, signName, template, param string) error {
 		buf.WriteByte('&')
 	}
 
-	sign := getSignature(buf.Bytes()[:buf.Len()-1], s.appSecret)
+	sign := getSignature(buf.Bytes()[:buf.Len()-1], s.accessKeySecret)
 	buf.Reset()
 	buf.WriteString("Signature=")
 	buf.WriteString(sign)
