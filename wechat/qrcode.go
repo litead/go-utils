@@ -6,6 +6,10 @@ type QRcode struct {
 	URL           string `json:"url"`
 }
 
+func (qr QRcode) ImageURL() string {
+	return "https://mp.weixin.qq.com/cgi-bin/showqrcode?ticket=" + qr.Ticket
+}
+
 const urlCreateQRCode = "https://api.weixin.qq.com/cgi-bin/qrcode/create?access_token=ACCESS_TOKEN"
 
 // CreateQRCode creates a QR code with the specified scene id.
