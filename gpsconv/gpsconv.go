@@ -19,37 +19,41 @@ type Location struct {
 }
 
 // NewLocation creates a new Location object
-func NewLocation(longitude, latitude float64) *Location {
-	return &Location{
+func NewLocation(longitude, latitude float64) Location {
+	return Location{
 		Longitude: longitude,
 		Latitude:  latitude,
 	}
 }
 
 // InsideChina returns true if the location is inside China, and false otherwise
-func (this *Location) InsideChina() bool {
-	if this.Longitude < 72.004 {
+func InsideChina(lng, lat float64) bool {
+	if lng < 72.004 {
 		return false
 	}
-	if this.Longitude > 137.8347 {
+	if lng > 137.8347 {
 		return false
 	}
-	if this.Latitude < 0.8293 {
+	if lat < 0.8293 {
 		return false
 	}
-	if this.Latitude > 55.8271 {
+	if lat > 55.8271 {
 		return false
 	}
 	return true
 }
 
+func (l Location) InsideChina() bool {
+	return InsideChina(l.Longitude, l.Latitude)
+}
+
 // DistanceFrom calculates the distance between two location, the result is in meter
-func (this *Location) DistanceFrom(loc *Location) float64 {
-	rad1 := this.Latitude / 180.0 * math.Pi
-	rad2 := loc.Latitude / 180.0 * math.Pi
+func DistanceFrom(lng1, lat1, lng2, lat2 float64) float64 {
+	rad1 := lat1 / 180.0 * math.Pi
+	rad2 := lat2 / 180.0 * math.Pi
 
 	a := rad1 - rad2
-	b := (this.Longitude - loc.Longitude) / 180.0 * math.Pi
+	b := (lng1 - lng2) / 180.0 * math.Pi
 
 	s := math.Pow(math.Sin(a/2), 2)
 	s += math.Cos(rad1) * math.Cos(rad2) * math.Pow(math.Sin(b/2), 2)
@@ -57,11 +61,15 @@ func (this *Location) DistanceFrom(loc *Location) float64 {
 	return 2 * math.Asin(math.Sqrt(s)) * 6378137.0
 }
 
-func (this *Location) transform() *Location {
-	x := this.Longitude - 105.0
-	y := this.Latitude - 35.0
+func (l Location) DistanceFrom(l2 Location) float64 {
+	return DistanceFrom(l.Longitude, l.Latitude, l2.Longitude, l2.Latitude)
+}
 
-	rad := this.Latitude / 180.0 * math.Pi
+func transform(lng, lat float64) (float64, float64) {
+	x := lng - 105.0
+	y := lat - 35.0
+
+	rad := lat / 180.0 * math.Pi
 	sin := math.Sin(rad)
 	cos := math.Cos(rad)
 	magic := 1 - gEE*sin*sin
@@ -82,50 +90,66 @@ func (this *Location) transform() *Location {
 	dLat += -100.0 + 2.0*x + 3.0*y + 0.2*y*y + 0.1*x*y + 0.2*math.Sqrt(math.Abs(x))
 	dLat = (dLat * 180.0) / ((gA * (1 - gEE)) / (magic * sqrt) * math.Pi)
 
-	return NewLocation(this.Longitude+dLng, this.Latitude+dLat)
+	return lng + dLng, lat + dLat
 }
 
 // Wgs84ToGcj02 converts WGS84 location to GCJ02
-func (this *Location) Wgs84ToGcj02() *Location {
-	if this.InsideChina() {
-		return this.transform()
-	}
-	return NewLocation(this.Longitude, this.Latitude)
+func Wgs84ToGcj02(lng, lat float64) (float64, float64) {
+	return transform(lng, lat)
+}
+
+func (l Location) Wgs84ToGcj02() Location {
+	return NewLocation(transform(l.Longitude, l.Latitude))
 }
 
 // Gcj02ToWgs84 converts GCJ02 location to WGS84
-func (this *Location) Gcj02ToWgs84() *Location {
-	if !this.InsideChina() {
-		return NewLocation(this.Longitude, this.Latitude)
-	}
-	loc := this.transform()
-	return NewLocation(this.Longitude*2-loc.Longitude, this.Latitude*2-loc.Latitude)
+func Gcj02ToWgs84(lng, lat float64) (float64, float64) {
+	lng1, lat1 := transform(lng, lat)
+	return lng*2 - lng1, lat*2 - lat1
+}
+
+func (l Location) Gcj02ToWgs84() Location {
+	return NewLocation(Gcj02ToWgs84(l.Longitude, l.Latitude))
 }
 
 // Gcj02ToBaidu converts GCJ02 location to BAIDU
-func (this *Location) Gcj02ToBaidu() *Location {
-	x := this.Longitude
-	y := this.Latitude
-	z := math.Sqrt(x*x+y*y) + 0.00002*math.Sin(y*gXPI)
-	theta := math.Atan2(y, x) + 0.000003*math.Cos(x*gXPI)
-	return NewLocation(z*math.Cos(theta)+0.0065, z*math.Sin(theta)+0.006)
+func Gcj02ToBaidu(lng, lat float64) (float64, float64) {
+	z := math.Sqrt(lng*lng+lat*lat) + 0.00002*math.Sin(lat*gXPI)
+	theta := math.Atan2(lat, lng) + 0.000003*math.Cos(lng*gXPI)
+	return z*math.Cos(theta) + 0.0065, z*math.Sin(theta) + 0.006
+}
+
+func (l Location) Gcj02ToBaidu() Location {
+	return NewLocation(Gcj02ToBaidu(l.Longitude, l.Latitude))
 }
 
 // BaiduToGcj02 converts BAIDU location to GCJ02
-func (this *Location) BaiduToGcj02() *Location {
-	x := this.Longitude - 0.0065
-	y := this.Latitude - 0.006
+func BaiduToGcj02(lng, lat float64) (float64, float64) {
+	x := lng - 0.0065
+	y := lat - 0.006
 	z := math.Sqrt(x*x+y*y) - 0.00002*math.Sin(y*gXPI)
 	theta := math.Atan2(y, x) - 0.000003*math.Cos(x*gXPI)
-	return NewLocation(z*math.Cos(theta), z*math.Sin(theta))
+	return z * math.Cos(theta), z * math.Sin(theta)
+}
+
+func (l Location) BaiduToGcj02() Location {
+	return NewLocation(BaiduToGcj02(l.Longitude, l.Latitude))
 }
 
 // Wgs84ToBaidu converts WGS84 location to BAIDU
-func (this *Location) Wgs84ToBaidu() *Location {
-	return this.Wgs84ToGcj02().Gcj02ToBaidu()
+func Wgs84ToBaidu(lng, lat float64) (float64, float64) {
+	return Gcj02ToBaidu(Wgs84ToGcj02(lng, lat))
+}
+
+func (l Location) Wgs84ToBaidu() Location {
+	return NewLocation(Wgs84ToBaidu(l.Longitude, l.Latitude))
 }
 
 // BaiduToWgs84 converts BAIDU location to WGS84
-func (this *Location) BaiduToWgs84() *Location {
-	return this.BaiduToGcj02().Gcj02ToWgs84()
+func BaiduToWgs84(lng, lat float64) (float64, float64) {
+	return Gcj02ToWgs84(BaiduToGcj02(lng, lat))
+}
+
+func (l Location) BaiduToWgs84() Location {
+	return NewLocation(BaiduToWgs84(l.Longitude, l.Latitude))
 }
