@@ -157,7 +157,7 @@ func NewClient(appID, secret string) *Client {
 				Ticket    string `json:"ticket"`
 				ExpiresIn uint32 `json:"expires_in"`
 			}
-			if e := c.doGet(url, &r); e != nil {
+			if e := c.get(url, &r); e != nil {
 				return e
 			}
 			t.set(r.Ticket, r.ExpiresIn)
