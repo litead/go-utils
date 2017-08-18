@@ -9,7 +9,7 @@
 * dynacrt: 动态创建指定类型的实例 (Create object instance from type name)
 * gpsconv: 用于将GPS坐标在WGS84、GCJ02和Baidu三个标准之间进行转换，并可计算两个坐标之间的距离 (Transform GPS coordinate between WGS84, GCJ02 and Baidu)
 * wechat: 封装了部分微信api (Encapsulation of some Wechat API)
-
+* layout: 支持layout的html模板 (html template render which support layout)
 
 ## 授权(License)
 
