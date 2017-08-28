@@ -11,6 +11,7 @@ type InvoiceUserInfo struct {
 	PdfURL          string `json:"pdf_url"`
 	ReimburseStatus string `json:"reimburse_status"`
 	CheckCode       string `json:"check_code"`
+	BuyerNumber     string `json:"buyer_number"`
 	SellerNumber    string `json:"seller_number"`
 }
 
