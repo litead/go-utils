@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"sort"
 	"strings"
 	"time"
@@ -58,7 +59,7 @@ type Client struct {
 	baseURL   string
 }
 
-func New(appKey, appSecret string, env uint) *Client {
+func NewClient(appKey, appSecret string, env uint) *Client {
 	var baseURL string
 	if env == EnvironmentSandBox {
 		baseURL = "https://gw.api.tbsandbox.com/router/rest"
@@ -72,7 +73,16 @@ func New(appKey, appSecret string, env uint) *Client {
 	return &Client{appKey: appKey, appSecret: appSecret, baseURL: baseURL}
 }
 
-func (c *Client) CallAPI(method string, args []Argument, resp interface{}) error {
+func appendFieldsArgument(args []Argument, fields string) []Argument {
+	for i := 0; i < len(args); i++ {
+		if args[i].Name == "fields" {
+			return args
+		}
+	}
+	return append(args, Argument{Name: "fields", Value: fields})
+}
+
+func (c *Client) callAPI(method string, args []Argument, resp interface{}) error {
 	args = append(args, Argument{Name: "method", Value: method},
 		Argument{Name: "app_key", Value: c.appKey},
 		Argument{Name: "format", Value: "json"},
@@ -91,15 +101,20 @@ func (c *Client) CallAPI(method string, args []Argument, resp interface{}) error
 		buf.WriteString(arg.Value)
 	}
 
-	sig := hmac.New(md5.New, []byte(c.appSecret)).Sum(buf.Bytes())
-	args = append(args, Argument{Name: "signature", Value: hex.EncodeToString(sig)})
+	mac := hmac.New(md5.New, []byte(c.appSecret))
+	mac.Write(buf.Bytes())
+	sig := mac.Sum(nil)
+	args = append(args, Argument{
+		Name:  "sign",
+		Value: strings.ToUpper(hex.EncodeToString(sig)),
+	})
 
 	buf.Reset()
 	for _, arg := range args {
 		buf.WriteByte('&')
-		buf.WriteString(arg.Name)
+		buf.WriteString(url.QueryEscape(arg.Name))
 		buf.WriteByte('=')
-		buf.WriteString(arg.Value)
+		buf.WriteString(url.QueryEscape(arg.Value))
 	}
 	data := buf.Bytes()
 	data[0] = '?'
@@ -117,7 +132,9 @@ func (c *Client) CallAPI(method string, args []Argument, resp interface{}) error
 
 	// first, is this an error?
 	er := &errorResponse{}
-	if e := json.Unmarshal(data, er); e == nil && er.ErrorResponse.Code != 0 {
+	if e := json.Unmarshal(data, er); e != nil {
+		return e
+	} else if er.ErrorResponse.Code != 0 {
 		return er
 	}
 
@@ -171,7 +188,8 @@ func (c *Client) TBKGetUatmFavoritesItem(args []Argument) ([]UatmTbkItem, error)
 		} `json:"tbk_uatm_favorites_item_get_response"`
 	}
 
-	if e := c.CallAPI("taobao.tbk.uatm.favorites.item.get", args, &resp); e != nil {
+	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick,shop_title,zk_final_price_wap,event_start_time,event_end_time,tk_rate,status,type")
+	if e := c.callAPI("taobao.tbk.uatm.favorites.item.get", args, &resp); e != nil {
 		return nil, e
 	}
 
@@ -195,15 +213,6 @@ type NTbkItem struct {
 	Volume       uint32 `json:"volume"`
 }
 
-type itemGetResponse struct {
-	TBKItemGetResponse struct {
-		Results struct {
-			Items []NTbkItem `json:"n_tbk_item"`
-		} `json:"results"`
-		TotalResults uint32 `json:"total_results"`
-	} `json:"tbk_item_get_response"`
-}
-
 func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
 	var resp struct {
 		Response struct {
@@ -214,7 +223,8 @@ func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
 		} `json:"tbk_item_get_response"`
 	}
 
-	if e := c.CallAPI("taobao.tbk.item.get", args, &resp); e != nil {
+	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick")
+	if e := c.callAPI("taobao.tbk.item.get", args, &resp); e != nil {
 		return nil, e
 	}
 
