@@ -157,36 +157,103 @@ func (c *Client) callAPI(method string, args []Argument, resp interface{}) error
 	return json.Unmarshal(data, resp)
 }
 
+type Time struct {
+	Value time.Time
+}
+
+const timeLayout = "2006-01-02 15:04:05"
+
+func (t *Time) UnmarshalJSON(b []byte) (err error) {
+	s := strings.Trim(string(b), "\"")
+	if s == "null" {
+		t.Value = time.Date(1970, time.January, 1, 0, 0, 0, 0, time.Local)
+	} else if tt, e := time.ParseInLocation(timeLayout, s, time.Local); e != nil {
+		return e
+	} else {
+		t.Value = tt
+	}
+	return nil
+}
+
+func (t *Time) MarshalJSON() ([]byte, error) {
+	return []byte(t.Value.Format("\"" + timeLayout + "\"")), nil
+}
+
+type StringSlice []string
+type jsonStringSlice struct {
+	String []string `json:"string"`
+}
+
+func (ss *StringSlice) UnmarshalJSON(b []byte) (err error) {
+	var jss jsonStringSlice
+	if e := json.Unmarshal(b, &jss); e != nil {
+		return e
+	}
+	*ss = StringSlice(jss.String)
+	return nil
+}
+
+func (ss *StringSlice) MarshalJSON() ([]byte, error) {
+	var jss jsonStringSlice
+	jss.String = []string(*ss)
+	return json.Marshal(&jss)
+}
+
+type CouponInfo struct {
+	Spent float64
+	Back  float64
+}
+
+func (ci *CouponInfo) UnmarshalJSON(b []byte) (err error) {
+	s := string(b)
+	if s == "\"null\"" {
+		ci.Spent = 0
+		ci.Back = 0
+		return nil
+	}
+	_, e := fmt.Sscanf(s, `"满%g元减%g元"`, &ci.Spent, &ci.Back)
+	return e
+}
+
+func (ci *CouponInfo) MarshalJSON() ([]byte, error) {
+	return []byte("\"" + ci.String() + "\""), nil
+}
+
+func (ci *CouponInfo) String() string {
+	if ci.Spent <= 0 || ci.Back <= 0 || ci.Back > ci.Spent {
+		return ""
+	}
+	return fmt.Sprintf("满%g元减%g元", ci.Spent, ci.Back)
+}
+
 type UatmTbkItem struct {
-	ID          uint   `json:"num_iid"`
-	Title       string `json:"title"`
-	PictURL     string `json:"pict_url"`
-	SmallImages struct {
-		String []string `json:"string"`
-	} `json:"small_images"`
-	ReservePrice      float64 `json:"reserve_price,string"`
-	ZKFinalPrice      float64 `json:"zk_final_price,string"`
-	Provcity          string  `json:"provcity"`
-	ItemURL           string  `json:"item_url"`
-	ClickURL          string  `json:"click_url"`
-	Nick              string  `json:"nick"`
-	SellerID          uint    `json:"seller_id"`
-	UserType          uint32  `json:"user_type"`
-	Volume            uint32  `json:"volume"`
-	TkRate            float64 `json:"tk_rate,string"`
-	ZkFinalPriceWAP   float64 `json:"zk_final_price_wap,string"`
-	ShopTitle         string  `json:"shop_title"`
-	EventStartTime    string  `json:"event_start_time"`
-	EventEndTime      string  `json:"event_end_time"`
-	Type              uint32  `json:"type"`
-	Status            uint32  `json:"status"`
-	Category          uint    `json:"category"`
-	CouponClickURL    string  `json:"coupon_click_url"`
-	CouponEndTime     string  `json:"coupon_end_time"`
-	CouponInfo        string  `json:"coupon_info"`
-	CouponStartTime   string  `json:"coupon_start_time"`
-	CouponTotalCount  uint32  `json:"coupon_total_count"`
-	CouponRemainCount uint32  `json:"coupon_remain_count"`
+	ID                uint        `json:"num_iid"`
+	Title             string      `json:"title"`
+	PictURL           string      `json:"pict_url"`
+	SmallImages       StringSlice `json:"small_images"`
+	ReservePrice      float64     `json:"reserve_price,string"`
+	ZKFinalPrice      float64     `json:"zk_final_price,string"`
+	Provcity          string      `json:"provcity"`
+	ItemURL           string      `json:"item_url"`
+	ClickURL          string      `json:"click_url"`
+	Nick              string      `json:"nick"`
+	SellerID          uint        `json:"seller_id"`
+	UserType          uint32      `json:"user_type"`
+	Volume            uint32      `json:"volume"`
+	TkRate            float64     `json:"tk_rate,string"`
+	ZkFinalPriceWAP   float64     `json:"zk_final_price_wap,string"`
+	ShopTitle         string      `json:"shop_title"`
+	EventStartTime    Time        `json:"event_start_time"`
+	EventEndTime      Time        `json:"event_end_time"`
+	Type              uint32      `json:"type"`
+	Status            uint32      `json:"status"`
+	Category          uint        `json:"category"`
+	CouponStartTime   Time        `json:"coupon_start_time"`
+	CouponEndTime     Time        `json:"coupon_end_time"`
+	CouponClickURL    string      `json:"coupon_click_url"`
+	CouponInfo        CouponInfo  `json:"coupon_info"`
+	CouponTotalCount  uint32      `json:"coupon_total_count"`
+	CouponRemainCount uint32      `json:"coupon_remain_count"`
 }
 
 func (c *Client) TBKGetUatmFavoritesItem(args []Argument) ([]UatmTbkItem, error) {
@@ -206,20 +273,18 @@ func (c *Client) TBKGetUatmFavoritesItem(args []Argument) ([]UatmTbkItem, error)
 }
 
 type NTbkItem struct {
-	ID          uint   `json:"num_iid"`
-	Title       string `json:"title"`
-	PictURL     string `json:"pict_url"`
-	SmallImages struct {
-		String []string `json:"string"`
-	} `json:"small_images"`
-	ReservePrice string `json:"reserve_price"`
-	ZKFinalPrice string `json:"zk_final_price"`
-	Provcity     string `json:"provcity"`
-	ItemURL      string `json:"item_url"`
-	Nick         string `json:"nick"`
-	SellerID     uint   `json:"seller_id"`
-	UserType     uint32 `json:"user_type"`
-	Volume       uint32 `json:"volume"`
+	ID           uint        `json:"num_iid"`
+	Title        string      `json:"title"`
+	PictURL      string      `json:"pict_url"`
+	SmallImages  StringSlice `json:"small_images"`
+	ReservePrice string      `json:"reserve_price"`
+	ZKFinalPrice string      `json:"zk_final_price"`
+	Provcity     string      `json:"provcity"`
+	ItemURL      string      `json:"item_url"`
+	Nick         string      `json:"nick"`
+	SellerID     uint        `json:"seller_id"`
+	UserType     uint32      `json:"user_type"`
+	Volume       uint32      `json:"volume"`
 }
 
 func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
