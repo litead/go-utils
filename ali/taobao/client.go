@@ -230,3 +230,27 @@ func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
 
 	return resp.Response.Results.Items, nil
 }
+
+type TbkFavorites struct {
+	Type  uint32 `json:"type"`
+	ID    uint   `json:"favorites_id"`
+	Title string `json:"favorites_title"`
+}
+
+func (c *Client) TBKGetUatmFavorites(args []Argument) ([]TbkFavorites, error) {
+	var resp struct {
+		Response struct {
+			Results struct {
+				Items []TbkFavorites `json:"tbk_favorites"`
+			} `json:"results"`
+			TotalResults uint32 `json:"total_results"`
+		} `json:"tbk_uatm_favorites_get_response"`
+	}
+
+	args = appendFieldsArgument(args, "favorites_title,favorites_id,type")
+	if e := c.callAPI("taobao.tbk.uatm.favorites.get", args, &resp); e != nil {
+		return nil, e
+	}
+
+	return resp.Response.Results.Items, nil
+}
