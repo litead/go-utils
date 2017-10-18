@@ -31,21 +31,19 @@ const (
 	}
 }
 */
-type errorResponse struct {
-	ErrorResponse struct {
-		Code    uint   `json:"code"`
-		Msg     string `json:"msg"`
-		SubCode string `json:"sub_code"`
-		SumMsg  string `json:"sub_msg"`
-	} `json:"error_response"`
+type Error struct {
+	Code    uint   `json:"code"`
+	Msg     string `json:"msg"`
+	SubCode string `json:"sub_code"`
+	SumMsg  string `json:"sub_msg"`
 }
 
-func (e *errorResponse) Error() string {
+func (e *Error) Error() string {
 	return fmt.Sprintf("[CODE]: %v, [MSG]: %v, [SUB_CODE]: %v, [SUB_MSG]: %v",
-		e.ErrorResponse.Code,
-		e.ErrorResponse.Msg,
-		e.ErrorResponse.SubCode,
-		e.ErrorResponse.SumMsg)
+		e.Code,
+		e.Msg,
+		e.SubCode,
+		e.SumMsg)
 }
 
 type Argument struct {
@@ -82,15 +80,7 @@ func appendFieldsArgument(args []Argument, fields string) []Argument {
 	return append(args, Argument{Name: "fields", Value: fields})
 }
 
-func (c *Client) callAPI(method string, args []Argument, resp interface{}) error {
-	args = append(args, Argument{Name: "method", Value: method},
-		Argument{Name: "app_key", Value: c.appKey},
-		Argument{Name: "format", Value: "json"},
-		Argument{Name: "sign_method", Value: "hmac"},
-		Argument{Name: "timestamp", Value: time.Now().Format("2006-01-02 15:04:05")},
-		Argument{Name: "v", Value: "2.0"},
-	)
-
+func (c *Client) appendSignatureArgument(args []Argument) []Argument {
 	sort.Slice(args, func(i, j int) bool {
 		return strings.Compare(args[i].Name, args[j].Name) < 0
 	})
@@ -109,33 +99,53 @@ func (c *Client) callAPI(method string, args []Argument, resp interface{}) error
 		Value: strings.ToUpper(hex.EncodeToString(sig)),
 	})
 
-	buf.Reset()
+	return args
+}
+
+func (c *Client) sendRequest(args []Argument) ([]byte, error) {
+	var buf bytes.Buffer
 	for _, arg := range args {
-		buf.WriteByte('&')
 		buf.WriteString(url.QueryEscape(arg.Name))
 		buf.WriteByte('=')
 		buf.WriteString(url.QueryEscape(arg.Value))
+		buf.WriteByte('&')
 	}
 	data := buf.Bytes()
-	data[0] = '?'
+	data = data[0 : len(data)-1]
 
-	hresp, e := http.DefaultClient.Get(c.baseURL + string(data))
+	resp, e := http.DefaultClient.Post(c.baseURL, "application/x-www-form-urlencoded", bytes.NewReader(data))
 	if e != nil {
-		return e
+		return nil, e
 	}
+	defer resp.Body.Close()
 
-	data, e = ioutil.ReadAll(hresp.Body)
-	hresp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+}
+
+func (c *Client) callAPI(method string, args []Argument, resp interface{}) error {
+	args = append(args, Argument{Name: "method", Value: method},
+		Argument{Name: "app_key", Value: c.appKey},
+		Argument{Name: "format", Value: "json"},
+		Argument{Name: "sign_method", Value: "hmac"},
+		Argument{Name: "timestamp", Value: time.Now().Format("2006-01-02 15:04:05")},
+		Argument{Name: "v", Value: "2.0"},
+	)
+	args = c.appendSignatureArgument(args)
+
+	data, e := c.sendRequest(args)
 	if e != nil {
 		return e
 	}
 
 	// first, is this an error?
-	er := &errorResponse{}
-	if e := json.Unmarshal(data, er); e != nil {
-		return e
-	} else if er.ErrorResponse.Code != 0 {
-		return er
+	if bytes.HasPrefix(data, []byte(`{"error_response":`)) {
+		err := &Error{}
+		data = data[18 : len(data)-1]
+		if e := json.Unmarshal(data, err); e != nil {
+			return e
+		} else if err.Code != 0 {
+			return err
+		}
 	}
 
 	// no need to parse
@@ -143,6 +153,7 @@ func (c *Client) callAPI(method string, args []Argument, resp interface{}) error
 		return nil
 	}
 
+	data = data[bytes.IndexByte(data, ':')+1 : len(data)-1]
 	return json.Unmarshal(data, resp)
 }
 
@@ -180,12 +191,10 @@ type UatmTbkItem struct {
 
 func (c *Client) TBKGetUatmFavoritesItem(args []Argument) ([]UatmTbkItem, error) {
 	var resp struct {
-		Response struct {
-			Results struct {
-				Items []UatmTbkItem `json:"uatm_tbk_item"`
-			} `json:"results"`
-			TotalResults uint32 `json:"total_results"`
-		} `json:"tbk_uatm_favorites_item_get_response"`
+		Results struct {
+			Items []UatmTbkItem `json:"uatm_tbk_item"`
+		} `json:"results"`
+		TotalResults uint32 `json:"total_results"`
 	}
 
 	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick,shop_title,zk_final_price_wap,event_start_time,event_end_time,tk_rate,status,type")
@@ -193,7 +202,7 @@ func (c *Client) TBKGetUatmFavoritesItem(args []Argument) ([]UatmTbkItem, error)
 		return nil, e
 	}
 
-	return resp.Response.Results.Items, nil
+	return resp.Results.Items, nil
 }
 
 type NTbkItem struct {
@@ -215,12 +224,10 @@ type NTbkItem struct {
 
 func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
 	var resp struct {
-		Response struct {
-			Results struct {
-				Items []NTbkItem `json:"n_tbk_item"`
-			} `json:"results"`
-			TotalResults uint32 `json:"total_results"`
-		} `json:"tbk_item_get_response"`
+		Results struct {
+			Items []NTbkItem `json:"n_tbk_item"`
+		} `json:"results"`
+		TotalResults uint32 `json:"total_results"`
 	}
 
 	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick")
@@ -228,7 +235,7 @@ func (c *Client) TBKGetItem(args []Argument) ([]NTbkItem, error) {
 		return nil, e
 	}
 
-	return resp.Response.Results.Items, nil
+	return resp.Results.Items, nil
 }
 
 type TbkFavorites struct {
@@ -239,12 +246,10 @@ type TbkFavorites struct {
 
 func (c *Client) TBKGetUatmFavorites(args []Argument) ([]TbkFavorites, error) {
 	var resp struct {
-		Response struct {
-			Results struct {
-				Items []TbkFavorites `json:"tbk_favorites"`
-			} `json:"results"`
-			TotalResults uint32 `json:"total_results"`
-		} `json:"tbk_uatm_favorites_get_response"`
+		Results struct {
+			Items []TbkFavorites `json:"tbk_favorites"`
+		} `json:"results"`
+		TotalResults uint32 `json:"total_results"`
 	}
 
 	args = appendFieldsArgument(args, "favorites_title,favorites_id,type")
@@ -252,5 +257,5 @@ func (c *Client) TBKGetUatmFavorites(args []Argument) ([]TbkFavorites, error) {
 		return nil, e
 	}
 
-	return resp.Response.Results.Items, nil
+	return resp.Results.Items, nil
 }
