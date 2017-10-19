@@ -17,20 +17,41 @@ type NTbkItem struct {
 	Volume       uint32      `json:"volume"`
 }
 
-func (c *Client) TbkGetItem(args []Argument) ([]NTbkItem, error) {
-	var resp struct {
-		Results struct {
-			Items []NTbkItem `json:"n_tbk_item"`
-		} `json:"results"`
-		TotalResults uint32 `json:"total_results"`
+func (c *Client) TbkGetItem(args []Argument, count int) ([]NTbkItem, error) {
+	const fields = "num_iid,title,pict_url,small_images,reserve_price,zk_final_price," +
+		"user_type,provcity,item_url,seller_id,volume,nick"
+	args = appendFieldsArgument(args, fields)
+
+	if count <= 0 {
+		count = 0x7fffffff
 	}
 
-	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick")
-	if e := c.call("taobao.tbk.item.get", args, &resp); e != nil {
-		return nil, e
+	pageSize := count
+	if count >= 100 {
+		pageSize = 100
+	}
+	args = append(args, Argument{Name: "page_size", Value: strconv.Itoa(pageSize)})
+
+	result := make([]NTbkItem, 0, 1024)
+	for page := 1; len(result) < count; page++ {
+		var resp struct {
+			Results struct {
+				Items []NTbkItem `json:"n_tbk_item"`
+			} `json:"results"`
+			TotalResults int `json:"total_results"`
+		}
+
+		if e := c.call("taobao.tbk.item.get", args, &resp); e != nil {
+			return nil, e
+		}
+
+		result = append(result, resp.Results.Items...)
+		if pageSize > len(resp.Results.Items) || len(result) >= resp.TotalResults {
+			break
+		}
 	}
 
-	return resp.Results.Items, nil
+	return result, nil
 }
 
 type TbkFavorites struct {
@@ -39,20 +60,43 @@ type TbkFavorites struct {
 	Title string `json:"favorites_title"`
 }
 
-func (c *Client) TbkGetUatmFavorites(args []Argument) ([]TbkFavorites, error) {
-	var resp struct {
-		Results struct {
-			Items []TbkFavorites `json:"tbk_favorites"`
-		} `json:"results"`
-		TotalResults uint32 `json:"total_results"`
-	}
-
+func (c *Client) TbkGetUatmFavorites(args []Argument, count int) ([]TbkFavorites, error) {
 	args = appendFieldsArgument(args, "favorites_title,favorites_id,type")
-	if e := c.call("taobao.tbk.uatm.favorites.get", args, &resp); e != nil {
-		return nil, e
+
+	if count <= 0 {
+		count = 0x7fffffff
 	}
 
-	return resp.Results.Items, nil
+	pageSize := count
+	if count >= 100 {
+		pageSize = 100
+	}
+	args = append(args, Argument{Name: "page_size", Value: strconv.Itoa(pageSize)})
+
+	result := make([]TbkFavorites, 0, 128)
+	for page := 1; len(result) < count; page++ {
+		var resp struct {
+			Results struct {
+				Items []TbkFavorites `json:"tbk_favorites"`
+			} `json:"results"`
+			TotalResults int `json:"total_results"`
+		}
+
+		targs := make([]Argument, len(args))
+		copy(targs, args)
+		targs = append(targs, Argument{Name: "page_no", Value: strconv.Itoa(page)})
+
+		if e := c.call("taobao.tbk.uatm.favorites.get", args, &resp); e != nil {
+			return nil, e
+		}
+
+		result = append(result, resp.Results.Items...)
+		if pageSize > len(resp.Results.Items) || len(result) >= resp.TotalResults {
+			break
+		}
+	}
+
+	return result, nil
 }
 
 type UatmTbkItem struct {
@@ -97,15 +141,12 @@ func (c *Client) TbkGetUatmFavoritesItem(args []Argument, count int) ([]UatmTbkI
 	}
 
 	pageSize := count
-
 	if count >= 100 {
 		pageSize = 100
 	}
-
 	args = append(args, Argument{Name: "page_size", Value: strconv.Itoa(pageSize)})
 
 	result := make([]UatmTbkItem, 0, 1024)
-
 	for page := 1; len(result) < count; page++ {
 		var resp struct {
 			Results struct {
