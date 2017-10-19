@@ -17,7 +17,19 @@ func (t *Time) UnmarshalJSON(b []byte) (err error) {
 	s := strings.Trim(string(b), "\"")
 	if s == "null" {
 		t.Value = time.Time{}
-	} else if tt, e := time.ParseInLocation(timeLayout, s, time.Local); e != nil {
+		return nil
+	}
+
+	var tt time.Time
+	var e error
+
+	if len(s) > 10 {
+		tt, e = time.ParseInLocation(timeLayout, s, time.Local)
+	} else {
+		tt, e = time.ParseInLocation("2006-01-02", s, time.Local)
+	}
+
+	if e != nil {
 		return e
 	} else if tt.Year() == 1970 {
 		t.Value = time.Time{}

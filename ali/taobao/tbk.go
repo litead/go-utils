@@ -1,8 +1,6 @@
 package taobao
 
-import (
-	"strconv"
-)
+import "strconv"
 
 type NTbkItem struct {
 	ID           uint        `json:"num_iid"`
@@ -88,7 +86,11 @@ type UatmTbkItem struct {
 }
 
 func (c *Client) TbkGetUatmFavoritesItem(args []Argument, count int) ([]UatmTbkItem, error) {
-	args = appendFieldsArgument(args, "num_iid,title,pict_url,small_images,reserve_price,zk_final_price,user_type,provcity,item_url,seller_id,volume,nick,shop_title,zk_final_price_wap,event_start_time,event_end_time,tk_rate,status,type")
+	const fields = "num_iid,title,pict_url,small_images,reserve_price,zk_final_price," +
+		"user_type,provcity,item_url,seller_id,volume,nick,shop_title,zk_final_price_wap," +
+		"event_start_time,event_end_time,tk_rate,status,type," +
+		"coupon_click_url,coupon_end_time,coupon_info,coupon_start_time,coupon_total_count,coupon_remain_count"
+	args = appendFieldsArgument(args, fields)
 
 	if count <= 0 {
 		count = 0x7fffffff
@@ -105,24 +107,23 @@ func (c *Client) TbkGetUatmFavoritesItem(args []Argument, count int) ([]UatmTbkI
 	result := make([]UatmTbkItem, 0, 1024)
 
 	for page := 1; len(result) < count; page++ {
-		var (
-			targs []Argument
-			resp  struct {
-				Results struct {
-					Items []UatmTbkItem `json:"uatm_tbk_item"`
-				} `json:"results"`
-				TotalResults int `json:"total_results"`
-			}
-		)
+		var resp struct {
+			Results struct {
+				Items []UatmTbkItem `json:"uatm_tbk_item"`
+			} `json:"results"`
+			TotalResults int `json:"total_results"`
+		}
 
-		targs = append(args, Argument{Name: "page_no", Value: strconv.Itoa(page)})
+		targs := make([]Argument, len(args))
+		copy(targs, args)
+		targs = append(targs, Argument{Name: "page_no", Value: strconv.Itoa(page)})
 
 		if e := c.call("taobao.tbk.uatm.favorites.item.get", targs, &resp); e != nil {
 			return nil, e
 		}
 
 		result = append(result, resp.Results.Items...)
-		if pageSize > len(resp.Results.Items) {
+		if pageSize > len(resp.Results.Items) || len(result) >= resp.TotalResults {
 			break
 		}
 	}
