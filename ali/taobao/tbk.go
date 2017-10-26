@@ -41,7 +41,15 @@ func (c *Client) TbkGetItem(args []Argument, count int) ([]NTbkItem, error) {
 			TotalResults int `json:"total_results"`
 		}
 
-		if e := c.call("taobao.tbk.item.get", args, &resp); e != nil {
+		var e error
+		for i := 0; i < 3; i++ {
+			resp.Results.Items = nil
+			resp.TotalResults = 0
+			if e = c.call("taobao.tbk.item.get", args, &resp); e != nil {
+				break
+			}
+		}
+		if e != nil {
 			return result, e
 		}
 
@@ -159,7 +167,15 @@ func (c *Client) TbkGetUatmFavoritesItem(args []Argument, count int) ([]UatmTbkI
 		copy(targs, args)
 		targs = append(targs, Argument{Name: "page_no", Value: strconv.Itoa(page)})
 
-		if e := c.call("taobao.tbk.uatm.favorites.item.get", targs, &resp); e != nil {
+		var e error
+		for i := 0; i < 3; i++ {
+			resp.Results.Items = nil
+			resp.TotalResults = 0
+			if e = c.call("taobao.tbk.uatm.favorites.item.get", targs, &resp); e == nil {
+				break
+			}
+		}
+		if e != nil {
 			return result, e
 		}
 
