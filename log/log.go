@@ -8,8 +8,10 @@ import (
 	"time"
 )
 
+type Level uint8
+
 const (
-	Debug = iota
+	Debug Level = iota
 	Info
 	Warning
 	Error
@@ -29,7 +31,7 @@ type Logger struct {
 	ToFile         bool
 	WithFile       bool
 	NoTime         bool
-	MinLevel       uint8
+	MinLevel       Level
 	Folder         string
 	FileNamePrefix string
 	Period         time.Duration
@@ -103,10 +105,10 @@ func (l *Logger) Close() {
 	}
 }
 
-func (l *Logger) write(level uint8, s string) {
+func (l *Logger) write(level Level, s string) {
 	sl := strLevel[level]
 	if l.WithFile {
-		_, file, line, ok := runtime.Caller(2)
+		_, file, line, ok := runtime.Caller(3)
 		if !ok {
 			file = "???"
 			line = 0
@@ -119,20 +121,106 @@ func (l *Logger) write(level uint8, s string) {
 	}
 
 	l.ch <- s
+}
+
+func (l *Logger) writeln(level Level, v ...interface{}) {
+	if level >= l.MinLevel {
+		l.write(level, fmt.Sprintln(v...))
+	}
 	if level == Fatal {
 		l.Close()
 		os.Exit(1)
 	}
 }
 
-func (l *Logger) Write(level uint8, v ...interface{}) {
-	if level >= l.MinLevel {
-		l.write(level, fmt.Sprintln(v...))
-	}
-}
-
-func (l *Logger) Writef(level uint8, format string, v ...interface{}) {
+func (l *Logger) writef(level Level, format string, v ...interface{}) {
 	if level >= l.MinLevel {
 		l.write(level, fmt.Sprintf(format+"\n", v...))
 	}
+	if level == Fatal {
+		l.Close()
+		os.Exit(1)
+	}
+}
+
+func (l *Logger) Debugln(v ...interface{}) {
+	l.writeln(Debug, v...)
+}
+
+func (l *Logger) Infoln(v ...interface{}) {
+	l.writeln(Info, v...)
+}
+
+func (l *Logger) Warningln(v ...interface{}) {
+	l.writeln(Warning, v...)
+}
+
+func (l *Logger) Errorln(v ...interface{}) {
+	l.writeln(Error, v...)
+}
+
+func (l *Logger) Fatalln(v ...interface{}) {
+	l.writeln(Fatal, v...)
+}
+
+func (l *Logger) Debugf(format string, v ...interface{}) {
+	l.writef(Debug, format, v...)
+}
+
+func (l *Logger) Infof(format string, v ...interface{}) {
+	l.writef(Info, format, v...)
+}
+
+func (l *Logger) Warningf(format string, v ...interface{}) {
+	l.writef(Warning, format, v...)
+}
+
+func (l *Logger) Errorf(format string, v ...interface{}) {
+	l.writef(Error, format, v...)
+}
+
+func (l *Logger) Fatalf(format string, v ...interface{}) {
+	l.writef(Fatal, format, v...)
+}
+
+var Default Logger
+
+func Debugln(v ...interface{}) {
+	Default.writeln(Debug, v...)
+}
+
+func Infoln(v ...interface{}) {
+	Default.writeln(Info, v...)
+}
+
+func Warningln(v ...interface{}) {
+	Default.writeln(Warning, v...)
+}
+
+func Errorln(v ...interface{}) {
+	Default.writeln(Error, v...)
+}
+
+func Fatalln(v ...interface{}) {
+	Default.writeln(Fatal, v...)
+}
+
+func Debugf(format string, v ...interface{}) {
+	Default.writef(Debug, format, v...)
+}
+
+func Infof(format string, v ...interface{}) {
+	Default.writef(Info, format, v...)
+}
+
+func Warningf(format string, v ...interface{}) {
+	Default.writef(Warning, format, v...)
+}
+
+func Errorf(format string, v ...interface{}) {
+	Default.writef(Error, format, v...)
+}
+
+func Fatalf(format string, v ...interface{}) {
+	Default.writef(Fatal, format, v...)
 }
