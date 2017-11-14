@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync"
 	"time"
 )
 
@@ -35,6 +36,7 @@ type Logger struct {
 	Folder         string
 	FileNamePrefix string
 	Period         time.Duration
+	wg             sync.WaitGroup
 	ch             chan string
 	file           *os.File
 	fileExpireAt   time.Time
@@ -76,6 +78,7 @@ func (l *Logger) createNewFile() error {
 }
 
 func (l *Logger) run() {
+	l.wg.Add(1)
 	for s, ok := <-l.ch; ok; s, ok = <-l.ch {
 		now := time.Now()
 		if !l.NoTime {
@@ -94,10 +97,12 @@ func (l *Logger) run() {
 		}
 		l.file.WriteString(s)
 	}
+	l.wg.Done()
 }
 
 func (l *Logger) Close() {
 	close(l.ch)
+	l.wg.Wait()
 
 	if l.file != nil {
 		l.file.Close()
