@@ -125,6 +125,13 @@ func (l *Logger) write(level Level, s string) {
 		s = sl + "\t" + s
 	}
 
+	defer func() {
+		// sometimes, channel is closed before the last log was written,
+		// and result in a panic
+		if r := recover(); r != nil {
+			fmt.Fprintln(os.Stderr, s)
+		}
+	}()
 	l.ch <- s
 }
 
