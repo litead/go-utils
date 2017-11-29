@@ -59,12 +59,13 @@ func (l *Logger) Start() error {
 	return nil
 }
 
-func (l *Logger) createNewFile() error {
+func (l *Logger) createNewFile(now time.Time) error {
 	if l.file != nil {
 		l.file.Close()
 		l.file = nil
 	}
 
+	l.fileExpireAt = l.fileExpireAt.Add(now.Sub(l.fileExpireAt) / l.Period * l.Period)
 	path := l.FileNamePrefix + l.fileExpireAt.Format("20060102_1504.log")
 	path = filepath.Join(l.Folder, path)
 	if f, e := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666); e != nil {
@@ -91,7 +92,7 @@ func (l *Logger) run() {
 			continue
 		}
 		if !now.Before(l.fileExpireAt) {
-			if e := l.createNewFile(); e != nil {
+			if e := l.createNewFile(now); e != nil {
 				continue
 			}
 		}
