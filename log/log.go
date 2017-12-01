@@ -31,6 +31,7 @@ type Logger struct {
 	ToStdErr       bool
 	ToFile         bool
 	WithFile       bool
+	NoLevel        bool
 	NoTime         bool
 	MinLevel       Level
 	Folder         string
@@ -112,7 +113,6 @@ func (l *Logger) Close() {
 }
 
 func (l *Logger) write(level Level, s string) {
-	sl := strLevel[level]
 	if l.WithFile {
 		_, file, line, ok := runtime.Caller(3)
 		if !ok {
@@ -121,9 +121,11 @@ func (l *Logger) write(level Level, s string) {
 		} else {
 			_, file = filepath.Split(file)
 		}
-		s = fmt.Sprintf("%s\t%s(%d)\t%s", sl, file, line, s)
-	} else {
-		s = sl + "\t" + s
+		s = fmt.Sprintf("%s(%d)\t%s", file, line, s)
+	}
+
+	if !l.NoLevel {
+		s = strLevel[level] + "\t" + s
 	}
 
 	defer func() {
