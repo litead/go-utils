@@ -2,27 +2,24 @@ package conv
 
 import (
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"net"
 	"strconv"
 	"strings"
 )
 
-func InetNtoa(n uint32) string {
-	fields := []string{
-		strconv.Itoa(int(byte(n >> 24))),
-		strconv.Itoa(int(byte(n >> 16))),
-		strconv.Itoa(int(byte(n >> 8))),
-		strconv.Itoa(int(byte(n))),
-	}
-	return strings.Join(fields, ".")
+func InetNtoa(ip uint32) string {
+	sip := make([]byte, 4)
+	binary.BigEndian.PutUint32(sip, ip)
+	return fmt.Sprintf("%d.%d.%d.%d", sip[0], sip[1], sip[2], sip[3])
 }
 
-func InetAton(s string) uint32 {
-	ip := net.ParseIP(s)
-	if ip == nil {
-		return 0
+func InetAton(ip string) uint32 {
+	if v := net.ParseIP(ip); v != nil {
+		return binary.BigEndian.Uint32(v[12:])
 	}
-	return uint32(ip[12])<<24 + uint32(ip[13])<<16 + uint32(ip[14])<<8 + uint32(ip[15])
+	return 0
 }
 
 func SliceToStringInt(slice []int, sep string) string {
@@ -83,4 +80,34 @@ func StringToSliceUint32(s string, seq string) []uint32 {
 		r[i] = uint32(v)
 	}
 	return r
+}
+
+func ItoaUint32(v uint32) string {
+	return strconv.FormatUint(uint64(v), 10)
+}
+
+func ItoaInt32(v int32) string {
+	return strconv.FormatInt(int64(v), 10)
+}
+
+func ItoaUint64(v uint64) string {
+	return strconv.FormatUint(v, 10)
+}
+
+func Float64ToString(f float64) string {
+	return strconv.FormatFloat(f, 'f', -1, 64)
+}
+
+func AtoiUint32(s string) (uint32, error) {
+	v, e := strconv.ParseUint(s, 10, 32)
+	return uint32(v), e
+}
+
+func AtoiInt32(s string) (int32, error) {
+	v, e := strconv.ParseInt(s, 10, 32)
+	return int32(v), e
+}
+
+func AtoiInt64(s string) (int64, error) {
+	return strconv.ParseInt(s, 10, 64)
 }
