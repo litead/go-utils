@@ -1,7 +1,6 @@
 package conv
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -27,19 +26,18 @@ func SliceToStringInt(slice []int, sep string) string {
 		return ""
 	}
 
-	s := strconv.Itoa(slice[0])
+	s := strconv.FormatInt(int64(slice[0]), 10)
 	if len(slice) == 1 {
 		return s
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString(s)
-	bs := []byte(sep)
+	var sb strings.Builder
+	sb.WriteString(s)
 	for _, i := range slice[1:] {
-		buf.Write(bs)
-		buf.WriteString(strconv.Itoa(i))
+		sb.WriteString(sep)
+		sb.WriteString(strconv.FormatInt(int64(i), 10))
 	}
-	return buf.String()
+	return sb.String()
 }
 
 func SliceToStringUint32(slice []uint32, sep string) string {
@@ -47,19 +45,37 @@ func SliceToStringUint32(slice []uint32, sep string) string {
 		return ""
 	}
 
-	s := strconv.Itoa(int(slice[0]))
+	s := strconv.FormatUint(uint64(slice[0]), 10)
 	if len(slice) == 1 {
 		return s
 	}
 
-	var buf bytes.Buffer
-	buf.WriteString(s)
-	bs := []byte(sep)
+	var sb strings.Builder
+	sb.WriteString(s)
 	for _, i := range slice[1:] {
-		buf.Write(bs)
-		buf.WriteString(strconv.Itoa(int(i)))
+		sb.WriteString(sep)
+		sb.WriteString(strconv.FormatUint(uint64(i), 10))
 	}
-	return buf.String()
+	return sb.String()
+}
+
+func SliceToStringUint16(slice []uint16, sep string) string {
+	if len(slice) == 0 {
+		return ""
+	}
+
+	s := strconv.FormatUint(uint64(slice[0]), 10)
+	if len(slice) == 1 {
+		return s
+	}
+
+	var sb strings.Builder
+	sb.WriteString(s)
+	for _, i := range slice[1:] {
+		sb.WriteString(sep)
+		sb.WriteString(strconv.FormatUint(uint64(i), 10))
+	}
+	return sb.String()
 }
 
 func StringToSliceInt(s string, seq string) []int {
@@ -76,8 +92,18 @@ func StringToSliceUint32(s string, seq string) []uint32 {
 	ss := strings.Split(s, seq)
 	r := make([]uint32, len(ss))
 	for i, s := range ss {
-		v, _ := strconv.Atoi(s)
+		v, _ := strconv.ParseUint(s, 10, 32)
 		r[i] = uint32(v)
+	}
+	return r
+}
+
+func StringToSliceUint16(s string, seq string) []uint16 {
+	ss := strings.Split(s, seq)
+	r := make([]uint16, len(ss))
+	for i, s := range ss {
+		v, _ := strconv.ParseUint(s, 10, 16)
+		r[i] = uint16(v)
 	}
 	return r
 }
