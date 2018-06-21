@@ -12,7 +12,7 @@ import (
 
 // IDArg is the most useful argument type, so define it here
 type IDArg struct {
-	ID uint64 `json:"id,string"`
+	ID int64 `json:"id,string"`
 }
 
 // Result is the API result type
