@@ -56,6 +56,7 @@ func (l *Logger) Start() error {
 	day := time.Date(y, m, d, 0, 0, 0, 0, time.Local)
 	l.fileExpireAt = day.Add(now.Sub(day) / l.Period * l.Period)
 
+	l.wg.Add(1)
 	go l.run()
 	return nil
 }
@@ -80,7 +81,6 @@ func (l *Logger) createNewFile(now time.Time) error {
 }
 
 func (l *Logger) run() {
-	l.wg.Add(1)
 	for s, ok := <-l.ch; ok; s, ok = <-l.ch {
 		now := time.Now()
 		if !l.NoTime {
@@ -106,6 +106,9 @@ func (l *Logger) Close() {
 	close(l.ch)
 	l.wg.Wait()
 
+	if l.ToStdErr {
+		os.Stderr.Sync()
+	}
 	if l.file != nil {
 		l.file.Close()
 		l.file = nil
