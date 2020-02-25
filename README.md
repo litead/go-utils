@@ -11,7 +11,7 @@
 * wechat: 封装了部分微信api (Encapsulation of some Wechat API)
 * layout: 支持layout的html模板 (html template render which support layout)
 * log: 简单的日志 (A simple logger)
-* rpc: 基于HTTP POST的简单RPC (A simple RPC framework based on HTTP POST)
+* rpc: 基于HTTP的简单RPC (A simple HTTP based RPC framework)
 
 ## 授权(License)
 

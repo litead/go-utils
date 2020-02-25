@@ -39,6 +39,7 @@ func NewResult(succeeded bool, message string, data ...interface{}) *Result {
 }
 
 type route struct {
+	method  string
 	handler reflect.Value
 }
 
@@ -88,7 +89,7 @@ var routes = make(map[string]route, 64)
 //     func(r *http.Request, args *TypeXXX) error
 // or
 //     func(r *http.Request) error
-func Add(name string, handler interface{}) {
+func Add(method, name string, handler interface{}) {
 	if _, ok := routes[name]; ok {
 		panic(fmt.Errorf("route '%v' already registered", name))
 	}
@@ -117,20 +118,20 @@ func Add(name string, handler interface{}) {
 		panic(e)
 	}
 
-	routes[name] = route{handler: reflect.ValueOf(handler)}
+	routes[name] = route{method: method, handler: reflect.ValueOf(handler)}
 }
 
 // ServeHTTP handles HTTP request
 func ServeHTTP(urlPrefix string, w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
-
 	name := r.URL.Path[len(urlPrefix):]
 	route, ok := routes[name]
 	if !ok {
 		w.WriteHeader(http.StatusFound)
+		return
+	}
+
+	if len(route.method) > 0 && route.method != r.Method {
+		w.WriteHeader(http.StatusMethodNotAllowed)
 		return
 	}
 
